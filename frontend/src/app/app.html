@@ -1,0 +1,14 @@
+@if (auth.isLoggedIn) {
+  <nav class="topnav">
+    <span class="brand">FinReminder</span>
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+    <a routerLink="/schedule" routerLinkActive="active">Schedule</a>
+    <a routerLink="/bills" routerLinkActive="active">Bills</a>
+    <a routerLink="/income" routerLinkActive="active">Income</a>
+    <a routerLink="/budgets" routerLinkActive="active">Budget</a>
+    <button class="link" (click)="auth.logout()">Logout</button>
+  </nav>
+}
+<main class="page">
+  <router-outlet />
+</main>
