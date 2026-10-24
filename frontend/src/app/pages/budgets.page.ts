@@ -82,11 +82,11 @@ import { MonthPicker } from '../shared/month-picker';
     .cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
     .stat h3 { margin: 0 0 6px; font-size: .8rem; text-transform: uppercase; color: #64748b; }
     .big { font-size: 1.4rem; margin: 4px 0; font-weight: 700; }
-    .bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin: 8px 0; }
-    .fill { height: 100%; background: #2563eb; }
-    .warn .fill { background: #d97706; } .bad .fill { background: #dc2626; }
+    .bar { height: 10px; background: #eef2f7; border-radius: 999px; overflow: hidden; margin: 8px 0; }
+    .fill { height: 100%; background: #30a46c; border-radius: 999px; }
+    .warn .fill { background: #e9a13b; } .bad .fill { background: #de3b40; }
     .tip { font-size: .85rem; margin-top: 8px; }
-    .bad-text { color: #dc2626; } .ok-text { color: #15803d; }
+    .bad-text { color: #de3b40; } .ok-text { color: #30a46c; }
     table { width: 100%; border-collapse: collapse; font-size: .9rem; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; }
     th { font-size: .75rem; text-transform: uppercase; color: #64748b; }

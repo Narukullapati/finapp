@@ -42,13 +42,13 @@ import { MonthPicker } from '../shared/month-picker';
     .date { width: 110px; color: #64748b; }
     .name { flex: 1; min-width: 140px; }
     .amt { font-weight: 600; }
-    .income-amt { color: #16a34a; }
+    .income-amt { color: #30a46c; }
     .badge { font-size: .75rem; padding: 3px 10px; border-radius: 999px; text-transform: capitalize; }
-    .badge.paid { background: #dcfce7; color: #15803d; }
-    .badge.missed { background: #fee2e2; color: #b91c1c; }
-    .badge.due_soon { background: #fef3c7; color: #b45309; }
-    .badge.upcoming { background: #e0e7ff; color: #4338ca; }
-    .row.missed { background: #fef2f2; }
+    .badge.paid { background: #e3f5ec; color: #1d7a4e; }
+    .badge.missed { background: #fdeaea; color: #b92f33; }
+    .badge.due_soon { background: #fdf2dd; color: #a96f1d; }
+    .badge.upcoming { background: #e6f7f2; color: #008f70; }
+    .row.missed { background: #fff5f5; }
   `,
 })
 export class SchedulePage implements OnInit {
