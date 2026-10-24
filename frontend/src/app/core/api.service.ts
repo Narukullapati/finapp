@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
-  Bill, Budget, CreditCardHealth, Income, NotificationItem,
+  Bill, Budget, CreditCardHealth, DetectResult, Income, NotificationItem,
   Occurrence, Payment, Summary,
 } from './models';
 
@@ -43,6 +43,13 @@ export class ApiService {
   }
   saveBudget(b: Partial<Budget>) { return this.http.put<Budget>(`${this.base}/budgets`, b); }
   deleteBudget(id: number) { return this.http.delete<void>(`${this.base}/budgets/${id}`); }
+
+  // statements
+  detectStatement(file: File) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<DetectResult>(`${this.base}/statements/detect`, fd);
+  }
 
   // dashboard
   getSummary(month: string) { return this.http.get<Summary>(`${this.base}/summary/${month}`); }

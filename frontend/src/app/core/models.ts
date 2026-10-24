@@ -96,6 +96,29 @@ export interface NotificationItem {
   severity: 'info' | 'warning' | 'critical';
 }
 
+export interface StatementSuggestion {
+  merchant_key: string;
+  name: string;
+  kind: 'bill' | 'income' | 'skip';
+  category: string;
+  amount: number;
+  currency: string;
+  recurrence: Recurrence;
+  due_day: number;
+  first_date: string;
+  last_date: string;
+  count: number;
+  median_gap_days: number;
+  sample: string;
+  selected: boolean;
+}
+
+export interface DetectResult {
+  transactions: number;
+  span: [string, string];
+  suggestions: StatementSuggestion[];
+}
+
 export interface CreditCardHealth {
   bill_id: number;
   name: string;

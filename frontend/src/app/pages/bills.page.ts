@@ -2,7 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
-import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
+import { Bill, BillCategory, Currency, DetectResult, Recurrence, StatementSuggestion } from '../core/models';
 import { Modal } from '../shared/modal';
 
 @Component({
@@ -11,7 +11,10 @@ import { Modal } from '../shared/modal';
   template: `
     <div class="page-head">
       <h1>Bills & Obligations</h1>
-      <button (click)="startNew()">+ Add bill</button>
+      <span class="head-actions">
+        <button class="secondary" (click)="importOpen.set(true)">Import statement</button>
+        <button (click)="startNew()">+ Add bill</button>
+      </span>
     </div>
 
     <app-modal [open]="editing()" [title]="form.id ? 'Edit bill' : 'Add bill'" (close)="editing.set(false)">
@@ -61,6 +64,59 @@ import { Modal } from '../shared/modal';
       </form>
     </app-modal>
 
+    <app-modal [open]="importOpen()" title="Import from statement" (close)="importOpen.set(false)">
+      @if (!detectResult()) {
+        <p class="muted">Upload a bank statement (.txt or .csv). I'll find recurring
+          transactions — credit cards, loans, utilities, salary — and you pick which to add.</p>
+        <input type="file" accept=".txt,.csv" (change)="onFile($event)" />
+        @if (detecting()) { <p class="muted">Analyzing…</p> }
+        @if (detectError()) { <p class="error">{{ detectError() }}</p> }
+      } @else {
+        <p class="muted">{{ detectResult()!.transactions }} transactions,
+          {{ detectResult()!.span[0] }} → {{ detectResult()!.span[1] }}.
+          Review and edit before importing — unchecked rows are skipped.</p>
+        <div class="tbl-wrap">
+        <table class="review">
+          <thead><tr>
+            <th></th><th>Name</th><th>Category</th><th>Amount</th>
+            <th>Repeats</th><th>Due day</th><th>Seen</th>
+          </tr></thead>
+          <tbody>
+            @for (s of suggestions(); track s.merchant_key; let i = $index) {
+              <tr [class.dimmed]="!s.selected">
+                <td><input type="checkbox" [(ngModel)]="s.selected" [name]="'sel' + i" /></td>
+                <td><input [(ngModel)]="s.name" [name]="'nm' + i" /></td>
+                <td>
+                  @if (s.kind === 'income') {
+                    <span class="kind-tag income">income</span>
+                  } @else {
+                    <select [(ngModel)]="s.category" [name]="'cat' + i">
+                      @for (c of categories; track c.v) { <option [value]="c.v">{{ c.l }}</option> }
+                    </select>
+                  }
+                </td>
+                <td><input type="number" step="0.01" min="0" [(ngModel)]="s.amount" [name]="'amt' + i" /></td>
+                <td>
+                  <select [(ngModel)]="s.recurrence" [name]="'rec' + i">
+                    @for (r of recurrences; track r) { <option [value]="r">{{ r.replace('_', ' ') }}</option> }
+                  </select>
+                </td>
+                <td><input type="number" min="1" max="31" [(ngModel)]="s.due_day" [name]="'dd' + i" /></td>
+                <td class="muted">{{ s.count }}× · {{ s.recurrence }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        </div>
+        <div class="actions">
+          <button (click)="importSelected()" [disabled]="importing() || selectedCount() === 0">
+            {{ importing() ? 'Importing…' : 'Import ' + selectedCount() + ' items' }}</button>
+          <button type="button" class="link" (click)="resetImport()">Pick another file</button>
+        </div>
+        @if (importDone()) { <p class="ok-msg">{{ importDone() }}</p> }
+      }
+    </app-modal>
+
     <div class="card">
       <table>
         <thead><tr>
@@ -108,6 +164,14 @@ import { Modal } from '../shared/modal';
     th { font-size: .75rem; text-transform: uppercase; color: #64748b; }
     tr.inactive td { opacity: .5; }
     td.actions { white-space: nowrap; }
+    .head-actions { display: inline-flex; gap: 10px; }
+    .tbl-wrap { max-height: 50vh; overflow-y: auto; margin: 10px 0; }
+    table.review td input, table.review td select { padding: 4px 6px; font-size: .82rem; }
+    table.review td:nth-child(4) input, table.review td:nth-child(6) input { width: 72px; }
+    tr.dimmed td { opacity: .4; }
+    .kind-tag { font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+      background: #e3f5ec; color: #1d7a4e; text-transform: uppercase; }
+    .ok-msg { color: #1d7a4e; font-weight: 600; }
   `,
 })
 export class BillsPage implements OnInit {
@@ -158,6 +222,69 @@ export class BillsPage implements OnInit {
   remove(b: Bill) {
     if (confirm(`Delete "${b.name}"? This also removes its payment history.`)) {
       this.api.deleteBill(b.id).subscribe(() => this.load());
+    }
+  }
+
+  // ---------- statement import ----------
+  importOpen = signal(false);
+  detecting = signal(false);
+  detectError = signal('');
+  detectResult = signal<DetectResult | null>(null);
+  suggestions = signal<StatementSuggestion[]>([]);
+  importing = signal(false);
+  importDone = signal('');
+
+  onFile(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.detecting.set(true);
+    this.detectError.set('');
+    this.api.detectStatement(file).subscribe({
+      next: r => {
+        this.detecting.set(false);
+        this.detectResult.set(r);
+        this.suggestions.set(r.suggestions.map(s => ({ ...s, selected: s.kind !== 'skip' })));
+      },
+      error: err => {
+        this.detecting.set(false);
+        this.detectError.set(err.error?.detail ?? 'Could not parse that file.');
+      },
+    });
+  }
+
+  resetImport() {
+    this.detectResult.set(null);
+    this.suggestions.set([]);
+    this.importDone.set('');
+  }
+
+  selectedCount() { return this.suggestions().filter(s => s.selected).length; }
+
+  importSelected() {
+    const items = this.suggestions().filter(s => s.selected);
+    this.importing.set(true);
+    let bills = 0, incomes = 0, done = 0;
+    const finish = () => {
+      if (++done === items.length) {
+        this.importing.set(false);
+        this.importDone.set(`Imported ${bills} bills and ${incomes} income sources.`);
+        this.load();
+      }
+    };
+    for (const s of items) {
+      if (s.kind === 'income') {
+        this.api.createIncome({
+          name: s.name, kind: (s.category === 'salary' ? 'salary' : 'other'),
+          amount: s.amount, currency: 'USD', recurrence: s.recurrence,
+          pay_day: s.due_day, start_date: s.last_date,
+        }).subscribe({ next: () => { incomes++; finish(); }, error: finish });
+      } else {
+        this.api.createBill({
+          name: s.name, category: s.category as BillCategory,
+          amount: s.amount, currency: 'USD', recurrence: s.recurrence,
+          due_day: s.due_day, start_date: s.last_date,
+        }).subscribe({ next: () => { bills++; finish(); }, error: finish });
+      }
     }
   }
 }

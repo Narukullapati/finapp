@@ -9,7 +9,7 @@ from .auth import hash_password
 from .config import settings
 from .database import Base, SessionLocal, engine
 from .models import User
-from .routers import auth, bills, budgets, dashboard, income
+from .routers import auth, bills, budgets, dashboard, income, statements
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("finreminder")
@@ -29,6 +29,7 @@ app.include_router(bills.router)
 app.include_router(income.router)
 app.include_router(budgets.router)
 app.include_router(dashboard.router)
+app.include_router(statements.router)
 
 
 @app.on_event("startup")
