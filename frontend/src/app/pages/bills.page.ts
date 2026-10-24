@@ -283,8 +283,25 @@ export class BillsPage implements OnInit {
           name: s.name, category: s.category as BillCategory,
           amount: s.amount, currency: 'USD', recurrence: s.recurrence,
           due_day: s.due_day, start_date: s.last_date,
-        }).subscribe({ next: () => { bills++; finish(); }, error: finish });
+        }).subscribe({
+          next: bill => {
+            bills++;
+            // the statement proves the last occurrence was paid — record it so
+            // the calendar shows it as paid and projects only future due dates
+            this.api.markPaid(bill.id, this.occurrenceDate(s), s.amount, s.last_date)
+              .subscribe({ next: finish, error: finish });
+          },
+          error: finish,
+        });
       }
     }
+  }
+
+  /** The occurrence due-date a suggestion's last transaction corresponds to. */
+  private occurrenceDate(s: StatementSuggestion): string {
+    if (s.recurrence === 'weekly' || s.recurrence === 'biweekly') return s.last_date;
+    const [y, m] = s.last_date.slice(0, 7).split('-').map(Number);
+    const dim = new Date(y, m, 0).getDate();
+    return `${s.last_date.slice(0, 7)}-${String(Math.min(s.due_day, dim)).padStart(2, '0')}`;
   }
 }

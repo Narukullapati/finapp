@@ -79,7 +79,8 @@ def _classify(key: str, desc: str) -> tuple[str, str]:
     for keywords, (kind, cat) in CATEGORY_RULES:
         if any(k in text for k in keywords):
             return kind, cat
-    return "bill", "other"
+    # unmatched merchants are spending, not bills (groceries, gas, dining...)
+    return "skip", "other"
 
 
 def _nice_name(key: str) -> str:
