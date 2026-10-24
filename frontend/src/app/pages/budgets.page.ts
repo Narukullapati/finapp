@@ -3,31 +3,36 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
 import { Budget, Currency, Summary } from '../core/models';
+import { Modal } from '../shared/modal';
 import { MonthPicker } from '../shared/month-picker';
 
 @Component({
   selector: 'app-budgets',
-  imports: [CurrencyPipe, FormsModule, MonthPicker],
+  imports: [CurrencyPipe, FormsModule, MonthPicker, Modal],
   template: `
     <div class="page-head">
       <h1>Monthly Budget</h1>
-      <app-month-picker [(month)]="month" (monthChange)="load()" />
+      <span class="head-actions">
+        <app-month-picker [(month)]="month" (monthChange)="load()" />
+        <button (click)="editing.set(true)">+ Set budget</button>
+      </span>
     </div>
 
-    <form class="card form" (ngSubmit)="save()">
-      <h2>Set budget for {{ month }}</h2>
-      <div class="fields">
-        <label>Currency
-          <select [(ngModel)]="form.currency" name="currency">
-            <option value="USD">USD ($)</option><option value="INR">INR (₹)</option>
-          </select>
-        </label>
-        <label>Budget amount <input type="number" step="0.01" min="0" [(ngModel)]="form.amount" name="amount" required /></label>
-        <label>Warn me at % used <input type="number" min="1" max="100" [(ngModel)]="form.warn_pct" name="warn_pct" /></label>
-      </div>
-      <button type="submit">Save budget</button>
-      <p class="muted">Set one budget per currency. The warn threshold flags "low budget" before you overspend — e.g. warn at 80%.</p>
-    </form>
+    <app-modal [open]="editing()" [title]="'Budget for ' + month" (close)="editing.set(false)">
+      <form (ngSubmit)="save()">
+        <div class="fields">
+          <label>Currency
+            <select [(ngModel)]="form.currency" name="currency">
+              <option value="USD">USD ($)</option><option value="INR">INR (₹)</option>
+            </select>
+          </label>
+          <label>Budget amount <input type="number" step="0.01" min="0" [(ngModel)]="form.amount" name="amount" required /></label>
+          <label>Warn me at % used <input type="number" min="1" max="100" [(ngModel)]="form.warn_pct" name="warn_pct" /></label>
+        </div>
+        <button type="submit">Save budget</button>
+        <p class="muted">Set one budget per currency. The warn threshold flags "low budget" before you overspend — e.g. warn at 80%.</p>
+      </form>
+    </app-modal>
 
     @if (summary(); as s) {
       <div class="grid cards">
@@ -76,6 +81,7 @@ import { MonthPicker } from '../shared/month-picker';
   `,
   styles: `
     .page-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .head-actions { display: inline-flex; gap: 10px; align-items: center; }
     .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px; margin: 10px 0; }
     label { font-size: .8rem; color: #475569; display: flex; flex-direction: column; gap: 4px; }
     .grid { display: grid; gap: 12px; margin: 12px 0; }
@@ -97,6 +103,7 @@ export class BudgetsPage implements OnInit {
   month = new Date().toISOString().slice(0, 7);
   budgets = signal<Budget[]>([]);
   summary = signal<Summary | null>(null);
+  editing = signal(false);
   form = { currency: 'USD' as Currency, amount: 0, warn_pct: 80 };
 
   ngOnInit() { this.load(); }
@@ -108,7 +115,8 @@ export class BudgetsPage implements OnInit {
   minPct(v: number | null) { return Math.min(v ?? 0, 100); }
 
   save() {
-    this.api.saveBudget({ month: this.month, ...this.form }).subscribe(() => this.load());
+    this.api.saveBudget({ month: this.month, ...this.form })
+      .subscribe(() => { this.editing.set(false); this.load(); });
   }
 
   remove(b: Budget) {

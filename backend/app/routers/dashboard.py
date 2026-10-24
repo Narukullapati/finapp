@@ -119,27 +119,40 @@ def notifications(db: Session = Depends(get_db)):
 @router.get("/credit-health", response_model=list[CreditCardHealth])
 def credit_health(db: Session = Depends(get_db)):
     today = date.today()
-    cards = (
+    items = (
         db.query(Bill)
-        .filter(Bill.category == BillCategory.credit_card, Bill.active.is_(True))
+        .filter(Bill.category.in_([BillCategory.credit_card, BillCategory.loan]),
+                Bill.active.is_(True))
         .all()
     )
+    all_occ = bill_occurrences(db, date(today.year - 1, today.month, 1), today, today)
     out = []
-    for c in cards:
+    for c in items:
+        is_loan = c.category == BillCategory.loan
         tips: list[str] = []
-        util = None
-        if c.credit_limit and c.current_balance is not None and c.credit_limit > 0:
-            util = round(float(c.current_balance / c.credit_limit * 100), 1)
-            if util > 30:
-                tips.append(f"Utilization is {util}% — pay balance below 30% of the limit (ideally <10%) to protect your score.")
-            elif util > 10:
-                tips.append(f"Utilization {util}% is OK — under 10% is best for your score.")
-        else:
-            tips.append("Add credit limit and current balance to track utilization (keep it under 30%).")
+        util = paid_off = None
 
-        # on-time ratio over the last 12 months
-        start = date(today.year - 1, today.month, 1)
-        occ = [o for o in bill_occurrences(db, start, today, today) if o.bill_id == c.id]
+        if is_loan:
+            if c.total_amount and c.current_balance is not None and c.total_amount > 0:
+                paid_off = round(float(1 - c.current_balance / c.total_amount) * 100, 1)
+                paid_off = max(0.0, min(100.0, paid_off))
+                if paid_off >= 100:
+                    tips.append("Paid off — mark inactive to keep history.")
+                if paid_off > 50:
+                    tips.append(f"{paid_off}% paid off — keep going, every EMI on time helps your score.")
+            else:
+                tips.append("Add original loan amount and outstanding balance to track payoff progress.")
+        else:
+            if c.credit_limit and c.current_balance is not None and c.credit_limit > 0:
+                util = round(float(c.current_balance / c.credit_limit * 100), 1)
+                if util > 30:
+                    tips.append(f"Utilization is {util}% — pay balance below 30% of the limit (ideally <10%) to protect your score.")
+                elif util > 10:
+                    tips.append(f"Utilization {util}% is OK — under 10% is best for your score.")
+            else:
+                tips.append("Add credit limit and current balance to track utilization (keep it under 30%).")
+
+        occ = [o for o in all_occ if o.bill_id == c.id]
         due = [o for o in occ if o.status in ("paid", "missed") or o.due_date < today]
         on_time = [o for o in due if o.payment and o.payment.paid_date <= o.due_date]
         ratio = round(len(on_time) / len(due) * 100, 1) if due else None
@@ -148,7 +161,8 @@ def credit_health(db: Session = Depends(get_db)):
         if not c.auto_pay:
             tips.append("Auto-pay is off — turning on auto-pay for the minimum payment prevents missed payments.")
         out.append(CreditCardHealth(
-            bill_id=c.id, name=c.name, currency=c.currency,
-            credit_limit=c.credit_limit, current_balance=c.current_balance,
-            utilization_pct=util, on_time_ratio_pct=ratio, tips=tips))
+            bill_id=c.id, name=c.name, kind="loan" if is_loan else "credit_card",
+            currency=c.currency, credit_limit=c.credit_limit, total_amount=c.total_amount,
+            current_balance=c.current_balance, utilization_pct=util, paid_off_pct=paid_off,
+            on_time_ratio_pct=ratio, tips=tips))
     return out

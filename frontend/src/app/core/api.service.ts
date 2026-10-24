@@ -23,8 +23,9 @@ export class ApiService {
 
   // schedule & payments
   getSchedule(month: string) { return this.http.get<Occurrence[]>(`${this.base}/schedule`, { params: { month } }); }
-  markPaid(billId: number, dueDate: string, amount?: number) {
-    return this.http.post<Payment>(`${this.base}/payments`, { bill_id: billId, due_date: dueDate, amount });
+  markPaid(billId: number, dueDate: string, amount?: number, paidDate?: string, notes?: string) {
+    return this.http.post<Payment>(`${this.base}/payments`,
+      { bill_id: billId, due_date: dueDate, amount, paid_date: paidDate, notes });
   }
   unmarkPaid(billId: number, dueDate: string) {
     return this.http.delete<void>(`${this.base}/payments/${billId}/${dueDate}`);

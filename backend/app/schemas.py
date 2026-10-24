@@ -39,6 +39,7 @@ class BillIn(BaseModel):
     due_day: int | None = Field(default=None, ge=1, le=31)
     start_date: date
     end_date: date | None = None
+    total_amount: Decimal | None = None
     credit_limit: Decimal | None = None
     current_balance: Decimal | None = None
     minimum_payment: Decimal | None = None
@@ -147,10 +148,13 @@ class SummaryOut(BaseModel):
 class CreditCardHealth(BaseModel):
     bill_id: int
     name: str
+    kind: Literal["credit_card", "loan"] = "credit_card"
     currency: str
     credit_limit: Decimal | None
+    total_amount: Decimal | None = None
     current_balance: Decimal | None
     utilization_pct: float | None
+    paid_off_pct: float | None = None
     on_time_ratio_pct: float | None
     tips: list[str]
 

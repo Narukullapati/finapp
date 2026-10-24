@@ -3,19 +3,19 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
 import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
+import { Modal } from '../shared/modal';
 
 @Component({
   selector: 'app-bills',
-  imports: [CurrencyPipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule, Modal],
   template: `
     <div class="page-head">
       <h1>Bills & Obligations</h1>
       <button (click)="startNew()">+ Add bill</button>
     </div>
 
-    @if (editing()) {
-      <form class="card form" (ngSubmit)="save()">
-        <h2>{{ form.id ? 'Edit' : 'New' }} bill</h2>
+    <app-modal [open]="editing()" [title]="form.id ? 'Edit bill' : 'Add bill'" (close)="editing.set(false)">
+      <form (ngSubmit)="save()">
         <div class="fields">
           <label>Name <input [(ngModel)]="form.name" name="name" required /></label>
           <label>Category
@@ -23,7 +23,8 @@ import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
               @for (c of categories; track c.v) { <option [value]="c.v">{{ c.l }}</option> }
             </select>
           </label>
-          <label>Amount <input type="number" step="0.01" min="0" [(ngModel)]="form.amount" name="amount" required /></label>
+          <label>{{ form.category === 'loan' ? 'Monthly EMI' : form.category === 'credit_card' ? 'Monthly payment' : 'Amount' }}
+            <input type="number" step="0.01" min="0" [(ngModel)]="form.amount" name="amount" required /></label>
           <label>Currency
             <select [(ngModel)]="form.currency" name="currency">
               <option value="USD">USD ($)</option><option value="INR">INR (₹)</option>
@@ -41,9 +42,13 @@ import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
             <input type="date" [(ngModel)]="form.start_date" name="start_date" required /></label>
           <label>End date (optional) <input type="date" [(ngModel)]="form.end_date" name="end_date" /></label>
           @if (form.category === 'credit_card') {
-            <label>Credit limit <input type="number" step="0.01" min="0" [(ngModel)]="form.credit_limit" name="credit_limit" /></label>
+            <label>Credit limit (total) <input type="number" step="0.01" min="0" [(ngModel)]="form.credit_limit" name="credit_limit" /></label>
             <label>Current balance <input type="number" step="0.01" min="0" [(ngModel)]="form.current_balance" name="current_balance" /></label>
             <label>Minimum payment <input type="number" step="0.01" min="0" [(ngModel)]="form.minimum_payment" name="minimum_payment" /></label>
+          }
+          @if (form.category === 'loan') {
+            <label>Original loan amount <input type="number" step="0.01" min="0" [(ngModel)]="form.total_amount" name="total_amount" /></label>
+            <label>Outstanding balance <input type="number" step="0.01" min="0" [(ngModel)]="form.current_balance" name="current_balance" /></label>
           }
           <label class="check"><input type="checkbox" [(ngModel)]="form.auto_pay" name="auto_pay" /> Auto-pay enabled</label>
           <label class="check"><input type="checkbox" [(ngModel)]="form.active" name="active" /> Active</label>
@@ -54,12 +59,12 @@ import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
           <button type="button" class="link" (click)="editing.set(false)">Cancel</button>
         </div>
       </form>
-    }
+    </app-modal>
 
     <div class="card">
       <table>
         <thead><tr>
-          <th>Name</th><th>Category</th><th>Amount</th><th>Repeats</th>
+          <th>Name</th><th>Category</th><th>Amount</th><th>Balance</th><th>Repeats</th>
           <th>Due</th><th>Auto-pay</th><th>Status</th><th></th>
         </tr></thead>
         <tbody>
@@ -68,6 +73,13 @@ import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
               <td><b>{{ b.name }}</b></td>
               <td>{{ label(b.category) }}</td>
               <td>{{ b.amount | currency: b.currency : 'symbol-narrow' }}</td>
+              <td>
+                @if (b.current_balance !== null) {
+                  {{ b.current_balance | currency: b.currency : 'symbol-narrow' : '1.0-0' }}
+                  @if (b.credit_limit) { <small class="muted">/ {{ b.credit_limit | currency: b.currency : 'symbol-narrow' : '1.0-0' }}</small> }
+                  @if (b.total_amount) { <small class="muted">of {{ b.total_amount | currency: b.currency : 'symbol-narrow' : '1.0-0' }}</small> }
+                } @else { — }
+              </td>
               <td>{{ b.recurrence.replace('_', ' ') }}</td>
               <td>{{ b.recurrence === 'one_time' ? b.start_date : (b.due_day ? 'day ' + b.due_day : '—') }}</td>
               <td>{{ b.auto_pay ? '✓' : '—' }}</td>
@@ -78,7 +90,7 @@ import { Bill, BillCategory, Currency, Recurrence } from '../core/models';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="8" class="muted">No bills yet — add your credit cards, loans, utilities and rent.</td></tr>
+            <tr><td colspan="9" class="muted">No bills yet — add your credit cards, loans, utilities and rent.</td></tr>
           }
         </tbody>
       </table>
@@ -121,7 +133,8 @@ export class BillsPage implements OnInit {
       id: 0, name: '', category: 'utility' as BillCategory, amount: 0,
       currency: 'USD' as Currency, recurrence: 'monthly' as Recurrence,
       due_day: 1 as number | null, start_date: new Date().toISOString().slice(0, 10),
-      end_date: null as string | null, credit_limit: null as number | null,
+      end_date: null as string | null, total_amount: null as number | null,
+      credit_limit: null as number | null,
       current_balance: null as number | null, minimum_payment: null as number | null,
       auto_pay: false, active: true, notes: '' as string | null,
     };

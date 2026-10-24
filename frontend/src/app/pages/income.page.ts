@@ -3,19 +3,19 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
 import { Currency, Income, IncomeKind, Recurrence } from '../core/models';
+import { Modal } from '../shared/modal';
 
 @Component({
   selector: 'app-income',
-  imports: [CurrencyPipe, FormsModule],
+  imports: [CurrencyPipe, FormsModule, Modal],
   template: `
     <div class="page-head">
       <h1>Income</h1>
       <button (click)="startNew()">+ Add income</button>
     </div>
 
-    @if (editing()) {
-      <form class="card form" (ngSubmit)="save()">
-        <h2>{{ form.id ? 'Edit' : 'New' }} income</h2>
+    <app-modal [open]="editing()" [title]="form.id ? 'Edit income' : 'Add income'" (close)="editing.set(false)">
+      <form (ngSubmit)="save()">
         <div class="fields">
           <label>Name <input [(ngModel)]="form.name" name="name" required placeholder="e.g. Salary, Freelance" /></label>
           <label>Type
@@ -48,7 +48,7 @@ import { Currency, Income, IncomeKind, Recurrence } from '../core/models';
           <button type="button" class="link" (click)="editing.set(false)">Cancel</button>
         </div>
       </form>
-    }
+    </app-modal>
 
     <div class="card">
       <table>

@@ -16,6 +16,7 @@ export interface Bill {
   due_day: number | null;
   start_date: string;
   end_date: string | null;
+  total_amount: number | null;
   credit_limit: number | null;
   current_balance: number | null;
   minimum_payment: number | null;
@@ -98,10 +99,13 @@ export interface NotificationItem {
 export interface CreditCardHealth {
   bill_id: number;
   name: string;
+  kind: 'credit_card' | 'loan';
   currency: string;
   credit_limit: number | null;
+  total_amount: number | null;
   current_balance: number | null;
   utilization_pct: number | null;
+  paid_off_pct: number | null;
   on_time_ratio_pct: number | null;
   tips: string[];
 }

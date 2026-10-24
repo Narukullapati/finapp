@@ -70,7 +70,8 @@ class Bill(Base):
     due_day: Mapped[int | None] = mapped_column(Integer, nullable=True)  # day of month
     start_date: Mapped[date] = mapped_column(Date)  # anchor for weekly/biweekly & one_time date
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # credit-card specific
+    # balance tracking (credit cards: limit/balance/min; loans: principal/outstanding)
+    total_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)  # original loan principal
     credit_limit: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     current_balance: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     minimum_payment: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)

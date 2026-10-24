@@ -44,6 +44,13 @@ def startup():
     else:
         raise RuntimeError("database not reachable")
 
+    # lightweight migration: add columns introduced after the first deploy
+    with engine.begin() as conn:
+        try:
+            conn.exec_driver_sql("ALTER TABLE bills ADD COLUMN total_amount NUMERIC(14,2)")
+        except Exception:
+            pass  # column already exists
+
     db = SessionLocal()
     try:
         if not db.query(User).filter(User.email == settings.admin_email).first():

@@ -98,22 +98,36 @@ import { ScoreGauge } from '../shared/score-gauge';
 
       @if (credit().length > 0) {
         <section class="card">
-          <h2>Credit card health</h2>
+          <h2>Credit health</h2>
           <div class="grid cards">
             @for (c of credit(); track c.bill_id) {
               <div class="cc">
                 <div class="cc-head">
-                  <b>{{ c.name }}</b><span class="muted">{{ c.currency }}</span>
+                  <b>{{ c.name }}</b>
+                  <span class="muted">{{ c.kind === 'loan' ? 'Loan' : 'Card' }} · {{ c.currency }}</span>
                 </div>
-                @if (c.utilization_pct !== null) {
-                  <div class="util-bar">
-                    <div class="util-fill" [style.width.%]="pct(c.utilization_pct)"
-                      [class.warn-fill]="c.utilization_pct > 30 && c.utilization_pct <= 50"
-                      [class.bad-fill]="c.utilization_pct > 50"></div>
-                    <span class="mark m30">30%</span><span class="mark m10">10%</span>
-                  </div>
-                  <p class="muted">{{ c.utilization_pct }}% of
-                    {{ c.credit_limit | currency: c.currency : 'symbol-narrow' : '1.0-0' }} limit</p>
+                @if (c.kind === 'loan') {
+                  @if (c.paid_off_pct !== null) {
+                    <div class="util-bar">
+                      <div class="util-fill" [style.width.%]="pct(c.paid_off_pct)"></div>
+                    </div>
+                    <p class="muted">{{ c.paid_off_pct }}% paid off —
+                      {{ c.current_balance | currency: c.currency : 'symbol-narrow' : '1.0-0' }} left of
+                      {{ c.total_amount | currency: c.currency : 'symbol-narrow' : '1.0-0' }}</p>
+                  } @else {
+                    <p class="muted">Add loan amount & outstanding balance in <a routerLink="/" fragment="bills">Bills</a> to track payoff.</p>
+                  }
+                } @else {
+                  @if (c.utilization_pct !== null) {
+                    <div class="util-bar">
+                      <div class="util-fill" [style.width.%]="pct(c.utilization_pct)"
+                        [class.warn-fill]="c.utilization_pct > 30 && c.utilization_pct <= 50"
+                        [class.bad-fill]="c.utilization_pct > 50"></div>
+                      <span class="mark m30">30%</span><span class="mark m10">10%</span>
+                    </div>
+                    <p class="muted">{{ c.utilization_pct }}% of
+                      {{ c.credit_limit | currency: c.currency : 'symbol-narrow' : '1.0-0' }} limit</p>
+                  }
                 }
                 @if (c.on_time_ratio_pct !== null) {
                   <p class="muted">On-time payments: <b [class.bad-text]="c.on_time_ratio_pct < 100">{{ c.on_time_ratio_pct }}%</b></p>
